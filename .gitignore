@@ -1,0 +1,8 @@
+.*.sw[pon]
+.AppleDouble
+.DS_Store
+.bundle
+.rvmrc
+Gemfile.lock
+pkg
+tags
