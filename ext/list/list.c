@@ -1,0 +1,312 @@
+#include "list.h"
+
+VALUE cList;
+ID id_at;
+
+static List_Node *List_Node_alloc(VALUE value)
+{
+    List_Node *new = ALLOC(List_Node);
+
+    if (new) {
+        memset(new, 0, sizeof(List_Node));
+        new->value = value;
+        return new;
+    } else {
+        return NULL;
+    }
+}
+
+static List_Node *List_insert(List_Node *ptr, VALUE value, long position)
+{
+    List_Node *start = ptr, *prev = NULL, *new = List_Node_alloc(value);
+
+    assert(position >= 0);
+    while (position > 0 && ptr) {
+        prev = ptr;
+        ptr = ptr->next;
+        --position;
+    }
+    assert(position == 0);
+
+    if (prev) {
+        prev->next = new;
+        new->next = ptr;
+        return start;
+    } else {
+        new->next = ptr;
+        return new;
+    }
+}
+
+static List_Node *List_delete(List_Node *ptr, long position)
+{
+    List_Node *start = ptr, *prev = NULL;
+
+    while (position > 0 && ptr) {
+        prev = ptr;
+        ptr = ptr->next;
+        --position;
+    }
+
+    if (ptr) {
+        if (prev) {
+            prev->next = ptr->next;
+            ruby_xfree(ptr);
+            return start;
+        } else {
+            start = ptr->next;
+            ruby_xfree(ptr);
+            return start;
+        }
+    } else {
+        ruby_xfree(start);
+        return NULL;
+    }
+}
+
+
+static void List_mark(void *ptr)
+{
+    const List_Meta *list = (List_Meta *) ptr;
+    List_Node *node = list->node;
+
+    while (node) {
+        rb_gc_mark_maybe(node->value);
+        node = node->next;
+    }
+}
+
+static void List_free(void *ptr)
+{
+    List_Meta *list = (List_Meta *) ptr;
+    List_Node *node = list->node, *n;
+
+    while (node) {
+        n = node->next;
+        ruby_xfree(node);
+        node = n;
+    }
+
+    ruby_xfree(ptr);
+}
+
+static size_t List_memsize(const void *ptr)
+{
+    const List_Meta *list = (List_Meta *) ptr;
+
+    return sizeof(*list) + list->size * sizeof(VALUE);
+}
+
+static void List_compact(void *ptr)
+{
+    List_Meta *list = (List_Meta *) ptr;
+    List_Node *node = list->node;
+
+    while (node) {
+        node->value = rb_gc_location(node->value);
+        node = node->next;
+    }
+}
+
+static const rb_data_type_t List_Meta_type = {
+  "List",
+  {
+      .dmark = List_mark,
+      .dfree = List_free,
+      .dsize = List_memsize,
+      .dcompact = List_compact,
+  },
+  0, 0,
+  RUBY_TYPED_WB_PROTECTED | RUBY_TYPED_FREE_IMMEDIATELY | RUBY_TYPED_FROZEN_SHAREABLE,
+};
+
+static VALUE rb_List_allocate(VALUE klass)
+{
+    List_Meta *list;
+
+    return TypedData_Make_Struct(klass, List_Meta, &List_Meta_type, list);
+}
+
+static VALUE rb_List_s_aref(int argc, VALUE *argv, VALUE klass)
+{
+    long i;
+    VALUE obj = rb_List_allocate(klass);
+    GET_STRUCT(obj);
+
+    for (i = 0; i < argc; ++i) {
+        list->node = List_insert(list->node, argv[i], i);
+        ++list->size;
+    }
+
+    return obj;
+}
+
+static VALUE rb_List_insert(VALUE self, VALUE value, VALUE opts)
+{
+    VALUE at;
+    long position;
+    List_Node *done;
+    ID id = id_at;
+    GET_STRUCT(self);
+
+    rb_get_kwargs(opts, &id, 0, 1, &at);
+    position = FIX2INT(at);
+
+    if (position < 0) {
+        position = list->size + position + 1;
+    }
+
+    done = NULL;
+    if (position >= 0 && position <= list->size) {
+        done = list->node = List_insert(list->node, value, position);
+    }
+    if (done) {
+        ++list->size;
+        return self;
+    } else {
+        return Qnil;
+    }
+}
+
+static VALUE rb_List_delete(VALUE self, VALUE opts)
+{
+    VALUE at;
+    long position;
+    int done;
+    ID id = id_at;
+    GET_STRUCT(self);
+
+    rb_get_kwargs(opts, &id, 0, 1, &at);
+    position = FIX2INT(at);
+
+    if (position < 0) {
+        position = list->size + position;
+    }
+
+    done = 0;
+    if (list->size > 0 && position >= 0 && position <= list->size) {
+        list->node = List_delete(list->node, position);
+        done = 1;
+    }
+    if (done) {
+        --list->size;
+        return self;
+    } else {
+        return Qnil;
+    }
+}
+
+static VALUE rb_List_size(VALUE self)
+{
+    GET_STRUCT(self);
+
+    return INT2FIX(list->size);
+}
+
+static VALUE rb_List_empty_p(VALUE self)
+{
+    GET_STRUCT(self);
+
+    return list->size == 0 ? Qtrue : Qfalse;
+}
+
+static VALUE rb_List_each(VALUE self)
+{
+    List_Node *node;
+    GET_STRUCT(self);
+    node = list->node;
+
+    RETURN_SIZED_ENUMERATOR(self, 0, 0, list->size);
+    for (; node; node = node->next) {
+        rb_yield(node->value);
+    }
+
+    return self;
+}
+
+static VALUE rb_List_index(VALUE self, VALUE value)
+{
+    List_Node *node;
+    long i;
+    GET_STRUCT(self);
+    node = list->node;
+
+    for (i = 0; node; ++i, node = node->next) {
+        if (rb_eql(node->value, value)) {
+            return INT2FIX(i);
+        }
+    }
+
+    return Qnil;
+}
+
+static VALUE rb_List_aref_set(VALUE self, VALUE number, VALUE value)
+{
+    List_Node *node, *done;
+    long i, position;
+    GET_STRUCT(self);
+    node = list->node;
+
+    position = FIX2INT(number);
+    if (position < 0) {
+        position = list->size + position;
+    }
+
+    for (i = 0; node; ++i, node = node->next) {
+        if (position == i) {
+            node->value = value;
+            return Qnil;
+        }
+    }
+
+    done = NULL;
+    if (position >= 0 && position <= list->size) {
+        done = list->node = List_insert(list->node, value, position);
+    }
+
+    if (done) {
+        ++list->size;
+    }
+
+    return Qnil;
+}
+
+static VALUE rb_List_aref(VALUE self, VALUE number)
+{
+    List_Node *node;
+    long i, position;
+    GET_STRUCT(self);
+    node = list->node;
+
+    position = FIX2INT(number);
+    if (position < 0) {
+        position = list->size + position;
+    }
+
+    for (i = 0; node; i++, node = node->next) {
+        if (position == i) {
+            return node->value;
+        }
+    }
+
+    return Qnil;
+}
+
+void Init_list()
+{
+    cList = rb_define_class("List", rb_cObject);
+    rb_include_module(cList, rb_mEnumerable);
+
+    rb_define_alloc_func(cList, rb_List_allocate);
+    rb_define_singleton_method(cList, "[]", rb_List_s_aref, -1);
+    rb_define_method(cList, "insert", rb_List_insert, 2);
+    rb_define_method(cList, "delete", rb_List_delete, 1);
+    rb_define_method(cList, "size", rb_List_size, 0);
+    rb_define_method(cList, "empty?", rb_List_empty_p, 0);
+    rb_define_method(cList, "each", rb_List_each, 0);
+    rb_define_method(cList, "index", rb_List_index, 1);
+    rb_define_method(cList, "[]=", rb_List_aref_set, 2);
+    rb_define_method(cList, "[]", rb_List_aref, 1);
+
+    CONST_ID(id_at, "at");
+}
