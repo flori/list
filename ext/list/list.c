@@ -50,6 +50,33 @@ static List_Node *List_insert(List_Node *ptr, VALUE value, long position)
     }
 }
 
+static List_Node *List_delete(List_Node *ptr, long position)
+{
+    List_Node *start = ptr, *prev = NULL;
+
+    while (position > 0 && ptr) {
+        prev = ptr;
+        ptr = ptr->next;
+        --position;
+    }
+
+    if (ptr) {
+        if (prev) {
+            prev->next = ptr->next;
+            xfree(ptr);
+            return start;
+        } else {
+            start = ptr->next;
+            xfree(ptr);
+            return start;
+        }
+    } else {
+        xfree(start);
+        return NULL;
+    }
+}
+
+
 static void List_mark(void *ptr)
 {
     const List_Meta *list = (List_Meta *) ptr;
@@ -110,11 +137,39 @@ static VALUE rb_List_insert(VALUE self, VALUE value, VALUE opts)
     }
 
     done = NULL;
-    if (position <= list->size) {
+    if (position >= 0 && position <= list->size) {
         done = list->node = List_insert(list->node, value, position);
     }
     if (done) {
         ++list->size;
+        return self;
+    } else {
+        return Qnil;
+    }
+}
+
+static VALUE rb_List_delete(VALUE self, VALUE opts)
+{
+    VALUE at;
+    long position;
+    int done;
+    ID id = id_at;
+    GET_STRUCT(self);
+
+    rb_get_kwargs(opts, &id, 0, 1, &at);
+    position = FIX2INT(at);
+
+    if (position < 0) {
+        position = list->size + position;
+    }
+
+    done = 0;
+    if (list->size > 0 && position >= 0 && position <= list->size) {
+        list->node = List_delete(list->node, position);
+        done = 1;
+    }
+    if (done) {
+        --list->size;
         return self;
     } else {
         return Qnil;
@@ -126,6 +181,13 @@ static VALUE rb_List_size(VALUE self)
     GET_STRUCT(self);
 
     return INT2FIX(list->size);
+}
+
+static VALUE rb_List_empty_p(VALUE self)
+{
+    GET_STRUCT(self);
+
+    return list->size == 0 ? Qtrue : Qfalse;
 }
 
 static VALUE rb_List_each(VALUE self)
@@ -178,7 +240,9 @@ void Init_list()
     rb_define_alloc_func(cList, rb_List_allocate);
     rb_define_singleton_method(cList, "[]", rb_List_s_aref, -1);
     rb_define_method(cList, "insert", rb_List_insert, 2);
+    rb_define_method(cList, "delete", rb_List_delete, 1);
     rb_define_method(cList, "size", rb_List_size, 0);
+    rb_define_method(cList, "empty?", rb_List_empty_p, 0);
     rb_define_method(cList, "each", rb_List_each, 0);
     rb_define_method(cList, "index", rb_List_index, 1);
 

@@ -78,6 +78,57 @@ describe List do
     end
   end
 
+  describe '#delete' do
+    let :list do
+      List[ 1, 2, 3 ]
+    end
+
+    it 'can be deleted from front' do
+      list.delete at: 0
+      expect(list.to_a).to eq [ 2, 3 ]
+    end
+
+    it 'can be deleted from back' do
+      list.delete at: -1
+      expect(list.to_a).to eq [ 1, 2 ]
+    end
+
+    it 'can be deleted from front in the middle' do
+      list.delete at: 1
+      expect(list.to_a).to eq [ 1, 3 ]
+    end
+
+    it 'can be deleted from back in the middle' do
+      list.delete at: -2
+      expect(list.to_a).to eq [ 1, 3 ]
+    end
+  end
+
+  describe '#size' do
+    let :list do
+      List[ 1, 2, 3 ]
+    end
+
+    it 'can return size' do
+      expect(list.size).to eq 3
+    end
+  end
+
+  describe '#empty?' do
+    let :list do
+      List[ 1 ]
+    end
+
+    it 'can return false result' do
+      expect(list).not_to be_empty
+    end
+
+    it 'can return true result' do
+      list.delete at: 0
+      expect(list).to be_empty
+    end
+  end
+
   describe '#index' do
     before do
       list.insert :foo, at: 0

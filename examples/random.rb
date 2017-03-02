@@ -7,3 +7,6 @@ n.times do |i|
   list.index(i)
 end
 p list.size
+n.times do |i|
+  list.delete at: rand(list.size + 1)
+end
