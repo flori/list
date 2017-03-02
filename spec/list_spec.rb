@@ -102,6 +102,24 @@ describe List do
       list.delete at: -2
       expect(list.to_a).to eq [ 1, 3 ]
     end
+
+    it 'can be deleted from front all the way' do
+      list.delete at: 0
+      expect(list.to_a).to eq [ 2, 3 ]
+      list.delete at: 0
+      expect(list.to_a).to eq [ 3 ]
+      list.delete at: 0
+      expect(list.to_a).to eq [ ]
+    end
+
+    it 'can be deleted from back all the way' do
+      list.delete at: -1
+      expect(list.to_a).to eq [ 1, 2 ]
+      list.delete at: -1
+      expect(list.to_a).to eq [ 1 ]
+      list.delete at: -1
+      expect(list.to_a).to eq [ ]
+    end
   end
 
   describe '#size' do
