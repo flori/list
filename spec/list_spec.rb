@@ -174,4 +174,36 @@ describe List do
       expect(list.to_a).to eq %i[ foo bar baz ]
     end
   end
+
+  describe '#[]' do
+    let :list do
+      List[ 1, 2, 3 ]
+    end
+
+    it 'can return the value from front' do
+      expect(list[1]).to eq 2
+    end
+
+    it 'can return the value from back' do
+      expect(list[-2]).to eq 2
+    end
+
+    it 'can return nil if it does not exist' do
+      expect(list[3]).to be_nil
+    end
+  end
+
+  describe '#[]=' do
+    it 'can be set via index number' do
+      expect(list.to_a).to eq []
+      list[0] = 1
+      expect(list.to_a).to eq [ 1 ]
+      list[1] = 2
+      expect(list.to_a).to eq [ 1, 2 ]
+      list[2] = 3
+      expect(list.to_a).to eq [ 1, 2, 3 ]
+      list[-2] = 4
+      expect(list.to_a).to eq [ 1, 4, 3 ]
+    end
+  end
 end

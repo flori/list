@@ -121,6 +121,20 @@ static VALUE rb_List_allocate(VALUE klass)
     return TypedData_Make_Struct(klass, List_Meta, &List_Meta_type, list);
 }
 
+static VALUE rb_List_s_aref(int argc, VALUE *argv, VALUE klass)
+{
+    long i;
+    VALUE obj = rb_List_allocate(klass);
+    GET_STRUCT(obj);
+
+    for (i = 0; i < argc; i++) {
+        list->node = List_insert(list->node, argv[i], i);
+        ++list->size;
+    }
+
+    return obj;
+}
+
 static VALUE rb_List_insert(VALUE self, VALUE value, VALUE opts)
 {
     VALUE at;
@@ -212,24 +226,64 @@ static VALUE rb_List_index(VALUE self, VALUE value)
     node = list->node;
 
     for (i = 0; node; i++, node = node->next) {
-        if (rb_eql(node->value, value)) return INT2FIX(i);
+        if (rb_eql(node->value, value)) {
+            return INT2FIX(i);
+        }
     }
 
     return Qnil;
 }
 
-static VALUE rb_List_s_aref(int argc, VALUE *argv, VALUE klass)
+static VALUE rb_List_aref_set(VALUE self, VALUE number, VALUE value)
 {
-    long i;
-    VALUE obj = rb_List_allocate(klass);
-    GET_STRUCT(obj);
+    List_Node *node, *done;
+    long i, position;
+    GET_STRUCT(self);
+    node = list->node;
 
-    for (i = 0; i < argc; i++) {
-        list->node = List_insert(list->node, argv[i], i);
+    position = FIX2INT(number);
+    if (position < 0) {
+        position = list->size + position;
+    }
+
+    for (i = 0; node; i++, node = node->next) {
+        if (position == i) {
+            node->value = value;
+            return Qnil;
+        }
+    }
+
+    done = NULL;
+    if (position >= 0 && position <= list->size) {
+        done = list->node = List_insert(list->node, value, position);
+    }
+
+    if (done) {
         ++list->size;
     }
 
-    return obj;
+    return Qnil;
+}
+
+static VALUE rb_List_aref(VALUE self, VALUE number)
+{
+    List_Node *node;
+    long i, position;
+    GET_STRUCT(self);
+    node = list->node;
+
+    position = FIX2INT(number);
+    if (position < 0) {
+        position = list->size + position;
+    }
+
+    for (i = 0; node; i++, node = node->next) {
+        if (position == i) {
+            return node->value;
+        }
+    }
+
+    return Qnil;
 }
 
 void Init_list()
@@ -245,6 +299,8 @@ void Init_list()
     rb_define_method(cList, "empty?", rb_List_empty_p, 0);
     rb_define_method(cList, "each", rb_List_each, 0);
     rb_define_method(cList, "index", rb_List_index, 1);
+    rb_define_method(cList, "[]=", rb_List_aref_set, 2);
+    rb_define_method(cList, "[]", rb_List_aref, 1);
 
     CONST_ID(id_at, "at");
 }
