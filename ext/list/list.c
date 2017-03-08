@@ -127,7 +127,7 @@ static VALUE rb_List_s_aref(int argc, VALUE *argv, VALUE klass)
     VALUE obj = rb_List_allocate(klass);
     GET_STRUCT(obj);
 
-    for (i = 0; i < argc; i++) {
+    for (i = 0; i < argc; ++i) {
         list->node = List_insert(list->node, argv[i], i);
         ++list->size;
     }
@@ -225,7 +225,7 @@ static VALUE rb_List_index(VALUE self, VALUE value)
     GET_STRUCT(self);
     node = list->node;
 
-    for (i = 0; node; i++, node = node->next) {
+    for (i = 0; node; ++i, node = node->next) {
         if (rb_eql(node->value, value)) {
             return INT2FIX(i);
         }
@@ -246,7 +246,7 @@ static VALUE rb_List_aref_set(VALUE self, VALUE number, VALUE value)
         position = list->size + position;
     }
 
-    for (i = 0; node; i++, node = node->next) {
+    for (i = 0; node; ++i, node = node->next) {
         if (position == i) {
             node->value = value;
             return Qnil;
