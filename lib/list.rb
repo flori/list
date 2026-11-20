@@ -1,2 +1,2 @@
-require "list.#{RbConfig::CONFIG.fetch('DLEXT')}"
+require "list/list"
 require 'list/version'
