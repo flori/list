@@ -120,6 +120,18 @@ describe List do
       list.delete at: -1
       expect(list.to_a).to eq [ ]
     end
+
+    it 'returns nil and leaves the list unchanged when at equals size' do
+      expect(list.delete(at: 3)).to be_nil
+      expect(list.to_a).to eq [ 1, 2, 3 ]
+      expect(list.size).to eq 3
+    end
+
+    it 'returns nil and leaves the list too far from the end' do
+      expect(list.delete(at: -4)).to be_nil
+      expect(list.to_a).to eq [ 1, 2, 3 ]
+      expect(list.size).to eq 3
+    end
   end
 
   describe '#size' do

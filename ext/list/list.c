@@ -183,6 +183,10 @@ static VALUE rb_List_delete(VALUE self, VALUE opts)
         position = list->size + position;
     }
 
+    if (position >= list->size) {
+        return Qnil;
+    }
+
     done = 0;
     if (list->size > 0 && position >= 0 && position <= list->size) {
         list->node = List_delete(list->node, position);
