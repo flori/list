@@ -7,23 +7,15 @@ insertion and deletion operations at arbitrary indices.
 
 ## Installation
 
-Add this gem to your Gemfile:
-
-```ruby
-gem 'list'
-```
-
-And install it using Bundler:
+Build the gem, then install the local package:
 
 ```bash
-bundle install
+rake build
+gem install pkg/list-0.0.1.gem
 ```
 
-Or install the gem directly:
-
-```bash
-gem install list
-```
+> **Note:** `gem install list` on RubyGems will install a different
+> gem. Always use the local `pkg/` path.
 
 ## Usage
 
